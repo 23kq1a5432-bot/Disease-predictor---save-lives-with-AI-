@@ -1,0 +1,95 @@
+# Day 1: Data Prep
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+# Load dataset (example: diabetes dataset)
+data = pd.read_csv("diabetes.csv")
+
+# Handle missing values (if any)
+data = data.fillna(data.mean())
+
+# Features (X) and target (y)
+X = data.drop("Outcome", axis=1)
+y = data["Outcome"]
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Scale features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# Train model
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+
+# Predictions
+y_pred = model.predict(X_test)
+
+# Evaluate
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("Report:\n", classification_report(y_test, y_pred))
+from sklearn.ensemble import RandomForestClassifier
+
+# Train advanced model
+rf = RandomForestClassifier(n_estimators=200, random_state=42)
+rf.fit(X_train, y_train)
+
+# Feature importance
+importances = rf.feature_importances_
+feat_imp = pd.DataFrame({"Feature": X.columns, "Importance": importances})
+print(feat_imp.sort_values(by="Importance", ascending=False))
+from sklearn.model_selection import GridSearchCV
+
+# Define params
+param_grid = {
+    "n_estimators": [100, 200, 300],
+    "max_depth": [None, 5, 10],
+    "min_samples_split": [2, 5, 10]
+}
+
+grid = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, scoring="accuracy")
+grid.fit(X_train, y_train)
+
+print("Best Params:", grid.best_params_)
+print("Best Score:", grid.best_score_)
+# Save model
+import joblib
+joblib.dump(grid.best_estimator_, "disease_model.pkl")
+import streamlit as st
+import joblib
+import numpy as np
+
+# Load trained model
+model = joblib.load("disease_model.pkl")
+
+st.title("🩺 Disease Prediction App")
+st.write("Enter patient details to check risk...")
+
+# Example inputs for diabetes
+preg = st.number_input("Pregnancies", 0, 20, 1)
+glucose = st.number_input("Glucose", 50, 250, 120)
+bp = st.number_input("Blood Pressure", 40, 180, 70)
+skin = st.number_input("Skin Thickness", 10, 100, 20)
+insulin = st.number_input("Insulin", 0, 900, 80)
+bmi = st.number_input("BMI", 10.0, 60.0, 25.0)
+dpf = st.number_input("Diabetes Pedigree Function", 0.0, 3.0, 0.5)
+age = st.number_input("Age", 10, 100, 30)
+
+# Prediction
+if st.button("Predict"):
+    features = np.array([[preg, glucose, bp, skin, insulin, bmi, dpf, age]])
+    prediction = model.predict(features)[0]
+    if prediction == 1:
+        st.error("⚠️ High Risk of Disease!")
+    else:
+        st.success("✅ Low Risk of Disease")
+streamlit run app.py
